@@ -1,0 +1,18 @@
+# Sensitive configuration
+.env
+config.php
+colors_config.php
+
+# Backup files
+*.bak
+
+# Logs
+*.log
+
+# Editor files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
