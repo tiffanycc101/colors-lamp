@@ -1,0 +1,48 @@
+@startuml
+title COLORS Web Application - Class Diagram
+
+skinparam classAttributeIconSize 0
+left to right direction
+
+class "JavaScript (code.js)" as JS <<module>> {
+  + doLogin()
+  + addColor()
+  + searchColor()
+  + doLogout()
+}
+
+class "Login.php" as Login <<API endpoint>>
+class "AddColor.php" as AddColor <<API endpoint>>
+class "SearchColors.php" as Search <<API endpoint>>
+
+class "Users" as Users <<database table>> {
+  + ID : INT (PK)
+  + FirstName : VARCHAR(50)
+  + LastName : VARCHAR(50)
+  + Login : VARCHAR(50)
+  + Password : VARCHAR(50)
+}
+
+class "Colors" as Colors <<database table>> {
+  + ID : INT (PK)
+  + Name : VARCHAR(50)
+  + UserID : INT
+}
+
+JS ..> Login : HTTP POST
+JS ..> AddColor : HTTP POST
+JS ..> Search : HTTP POST
+
+Login ..> Users : SELECT
+AddColor ..> Colors : INSERT
+Search ..> Colors : SELECT
+
+Users "1" -- "0..*" Colors : UserID
+
+note bottom of Colors
+  UserID links colors to users logically.
+  The lab SQL does not explicitly
+  declare a foreign key constraint.
+end note
+
+@enduml
