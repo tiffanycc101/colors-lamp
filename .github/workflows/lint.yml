@@ -1,5 +1,4 @@
-
-name: Automated Linting
+name: Automated Linting and Testing
 
 on:
   push:
@@ -11,6 +10,22 @@ permissions:
 jobs:
   lint:
     runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_root_password
+          MYSQL_DATABASE: colors_test
+          MYSQL_USER: colors_test
+          MYSQL_PASSWORD: test_password
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       - name: Checkout repository
@@ -27,3 +42,36 @@ jobs:
 
       - name: Run all linters
         run: npm run lint
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mysqli
+
+      - name: Initialize test database
+        run: |
+          docker exec -i "${{ job.services.mysql.id }}" mysql -ucolors_test -ptest_password colors_test < tests/seed.sql
+
+      - name: Configure database connection
+        run: |
+          sudo mkdir -p /var/www
+          sudo tee /var/www/colors_config.php > /dev/null <<'PHP'
+          <?php
+          $DB_HOST = "127.0.0.1";
+          $DB_USER = "colors_test";
+          $DB_PASS = "test_password";
+          $DB_NAME = "colors_test";
+          PHP
+
+      - name: Start PHP server
+        run: |
+          php -d mysqli.default_port=3307 -S 127.0.0.1:8000 -t . > /tmp/colors-php.log 2>&1 &
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 http://127.0.0.1:8000/index.html
+
+      - name: Run automated tests
+        run: npm test
+
+      - name: Display PHP logs on failure
+        if: failure()
+        run: cat /tmp/colors-php.log || true
